@@ -30,10 +30,11 @@ def negamax(board, depth, cutOff):
 
 def eval_moves(board):
     depth = 4
-    cutOff = -500
-    if len(list(board.legal_moves)) <= 13:
+    if len(list(board.legal_moves)) <= 20:
+        depth = 4
+    if len(list(board.legal_moves)) <= 130:
         depth = 5
-        cutOff = -800
+        cutOff = -1000
     global moveNumber
     moveNumber += 1
     if checkGameEnd(board) != pi:
@@ -61,9 +62,6 @@ def eval_moves(board):
     print(board)"""
 
 while not board.is_game_over():
-    move = eval_moves(board)
-    board.push(chess.Move.from_uci(move))
-    print(move)
     print(moveNumber)
     playerMove = input("make a move ")
     if playerMove == "board":
@@ -74,3 +72,6 @@ while not board.is_game_over():
     board.push(chess.Move.from_uci(playerMove))
     moveNumber += 1
     print(moveNumber)
+    move = eval_moves(board)
+    board.push(chess.Move.from_uci(move))
+    print(move)
