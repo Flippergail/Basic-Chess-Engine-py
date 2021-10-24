@@ -1,8 +1,8 @@
 # importing packages
 import pandas as pd
 import numpy as np
-from evaluationModule import miniEvaluate
 from evaluationModule import evaluate
+from math import pi
 
 import chess.polyglot
 from evaluationModule import checkGameEnd
@@ -15,6 +15,8 @@ moveNumber = 0
 
 def quiesce(alpha, beta, depthLeft):
     stand_pat = evaluate(board)
+    gameEnd = checkGameEnd(board)
+    if gameEnd != pi: return gameEnd
     if stand_pat >= beta:
         return beta
     if alpha < stand_pat:
@@ -38,8 +40,10 @@ def quiesce(alpha, beta, depthLeft):
 def alphabeta(alpha, beta, depthleft):
     max = -float("inf")
     if depthleft == 0:
-        return quiesce(alpha, beta, 2)
+        return quiesce(alpha, beta, 3)
     for i in board.legal_moves:
+        gameEnd = checkGameEnd(board)
+        if gameEnd != pi: return gameEnd
         board.push(i)
         score = -alphabeta(-beta, -alpha, depthleft - 1)
         board.pop()
@@ -53,6 +57,8 @@ def alphabeta(alpha, beta, depthleft):
 
 
 def selectmove():
+    if checkGameEnd(board) != pi:
+        exit("gameEnded")
     depth = 4
     """try:
         move = chess.polyglot.MemoryMappedReader("Perfect2017-SF12.bin").weighted_choice(board)
@@ -66,6 +72,9 @@ def selectmove():
     for move in board.legal_moves:
         board.push(move)
         boardValue = -alphabeta(-beta, -alpha, depth-1)
+
+        if checkGameEnd(board) != pi:
+            boardValue = checkGameEnd(board)
         if boardValue > bestValue:
             bestValue = boardValue
             bestMove = move
@@ -74,31 +83,6 @@ def selectmove():
         board.pop()
         movehistory.append(bestMove)
     return bestMove
-
-
-"""def eval_moves(board):
-    depth = 4
-    legal_moves_list = list(board.legal_moves)
-    if len(board.pieces) <= 6:
-        depth += 1
-    global moveNumber
-    moveNumber += 1
-    if checkGameEnd(board) != pi:
-        print("Game Has Ended.")
-        print(moveNumber)
-        exit()
-    my_moves = pd.DataFrame(columns=['score', 'move'])
-    my_moves['row_num'] = np.arange(len(legal_moves_list))
-    for i, v in enumerate(legal_moves_list):
-        board.push(chess.Move.from_uci(str(v)))
-        if depth == 0: score = evaluate(board)
-       # elif checkGameEnd(board) != pi: score = checkGameEnd(board)
-        else: score = negamax(board, depth-1)
-        board.pop()
-        my_moves.iat[i, 0] = score
-        my_moves.iat[i, 1] = str(v)
-    best_move = my_moves.loc[my_moves['score'].astype(float).idxmin()]['move']
-    return best_move"""
 
 
 """while not board.is_game_over():

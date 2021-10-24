@@ -12,7 +12,15 @@ class materialEval:
         eval = 0
         eval += self.actual_weight(board)
         eval += self.rough_position_weight(board)
-        return eval
+        eval += self.pawn_shields(board)
+        eval += self.passed_pawn(board)
+        eval += self.two_bishops(board)
+        eval += self.doubled_rooks(board)
+        if board.turn:
+            return eval
+        else:
+            return -eval
+
     def actual_weight(self, board):
         wp = len(board.pieces(chess.PAWN, chess.WHITE))
         bp = len(board.pieces(chess.PAWN, chess.BLACK))
@@ -26,10 +34,8 @@ class materialEval:
         bq = len(board.pieces(chess.QUEEN, chess.BLACK))
 
         eval = 100 * (wp - bp) + 320 * (wn - bn) + 330 * (wb - bb) + 500 * (wr - br) + 900 * (wq - bq)
-        if board.turn:
-            return eval
-        else:
-            return -eval
+        return eval
+
     def rough_position_weight(self, board):
         pawntable = [
             0, 0, 0, 0, 0, 0, 0, 0,
@@ -111,10 +117,104 @@ class materialEval:
                                for i in board.pieces(chess.KING, chess.BLACK)])
 
         eval = pawnsq + knightsq + bishopsq + rooksq + queensq + kingsq
-        if board.turn:
-            return eval
+        return eval
+
+    def pawn_shields(self, board):
+        squares_of_king = list(board.pieces(6, True))
+        squares_of_pawn = list(board.pieces(1, True))
+        combinations = [[7, 8, 9], [7, 16, 9], [15, 9, 10]]
+        new_comb = []
+        if (squares_of_king[0] - 1) % 8 == 7 or squares_of_king[0] - 1 == -1:
+            combinations = [[8, 9], [16, 9]]
+        elif (squares_of_king[0] + 1) % 8 == 0:
+            combinations = [[7, 8], [7, 16]]
+        for columns in range(len(combinations[0])):
+            col = []
+            for rows in range(len(combinations[0])):
+                col.append(combinations[columns][rows] + int(squares_of_king[0]))
+            new_comb.append(col)
+        for i in new_comb:
+            if set(i) <= set(squares_of_pawn):
+                return 80
+        return 0
+
+    def passed_pawn(self, board):
+        points = 0
+        squares_of_pawn_w = list(board.pieces(1, True))
+        squares_of_pawn_b = list(board.pieces(1, False))
+        for i in range(len(squares_of_pawn_w)):
+            passed = True
+            if (squares_of_pawn_w[i] - 1) % 8 == 7:
+                combinations = [squares_of_pawn_w[i] + 8, squares_of_pawn_w[i] + 9]
+            elif (squares_of_pawn_w[i] + 1) % 8 == 0:
+                combinations = [squares_of_pawn_w[i] + 7, squares_of_pawn_w[i] + 8]
+            else:
+                combinations = [squares_of_pawn_w[i] + 7, squares_of_pawn_w[i] + 8, squares_of_pawn_w[i] + 9]
+            for j in range(18):
+                combinations.append(combinations[j] + 8)
+            for f in range(len(combinations)):
+                if combinations[f] in squares_of_pawn_b:
+                    passed = False
+                    break
+            if passed:
+                points += 15
+        return points
+
+    """def isolated_pawn(self, board):
+        points = 0
+        squares_of_pawn = list(board.pieces(1, True))
+        definite_squares_of_pawn = list(board.pieces(1, True))
+        x = len(squares_of_pawn)
+        if x == 1:
+            return -10
+        elif x == 0:
+            return 0
+        for i in range(x):
+            isolated = True
+            if (squares_of_pawn[i] - 1) % 8 == 7:
+                combinations = [squares_of_pawn[i] + 8, squares_of_pawn[i] + 9]
+            elif (squares_of_pawn[i] + 1) % 8 == 0:
+                combinations = [squares_of_pawn[i] + 7, squares_of_pawn[i] + 8]
+            else:
+                combinations = [squares_of_pawn[i] + 7, squares_of_pawn[i] + 8, squares_of_pawn[i] + 9]
+            for j in range(18):
+                combinations.append(combinations[j] + 8)
+            for f in range(len(combinations)):
+                if combinations[f] in definite_squares_of_pawn:
+                    isolated = False
+                    break
+            if isolated:
+                points -= 10
+        return points"""
+
+    def two_bishops(self, board):
+        if len(list(board.pieces(3, True))) == 2:
+            return 12
         else:
-            return -eval
+            return 0
+
+    """def doubled_pawns(self, board):
+        points = 0
+        squares_of_pawn = list(board.pieces(1, True))
+        if len(squares_of_pawn) == 0 or len(squares_of_pawn) == 1:
+            return 0
+        for i in range(len(squares_of_pawn)):
+            combination = [squares_of_pawn[i] + 8]
+            for k in range(6):
+                combination.append(combination[k] + 8)
+            for f in range(len(combination)):
+                if combination[f] in squares_of_pawn:
+                    points -= 5
+        return points"""
+
+    def doubled_rooks(self, board):
+        squares_of_rooks = list(board.pieces(4, True))
+        if len(squares_of_rooks) <= 1:
+            return 0
+        for i in range(len(squares_of_rooks) - 1):
+            if squares_of_rooks[i] % 8 == squares_of_rooks[i + 1] % 8:
+                return 15
+        return 0
 
 
 # checks if the game ends
@@ -124,10 +224,10 @@ def checkGameEnd(board):
             return -float("inf")
         else:
             return float("inf")
-    """if board.is_stalemate(): return 0
+    if board.is_stalemate(): return 0
     if board.is_fivefold_repetition(): return 0
     if board.is_seventyfive_moves(): return 0
-    if board.is_insufficient_material(): return 0"""
+    if board.is_insufficient_material(): return 0
     return pi
 
 
@@ -140,8 +240,3 @@ def evaluate(board_position):
     if gameEnd != pi: return gameEnd
     points += material.run(bp)
     return points
-
-
-# get actual weight function byitself
-def miniEvaluate(board):
-    return material.actual_weight(board)
